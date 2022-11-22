@@ -10,8 +10,8 @@ const bridgeLengthValidate = (input) => {
   }
 };
 const userMoveInput = (input) => {
-  const isRight = (input) => input === "U" || input === "D";
-  try {
+ 
+  try { const isRight = (input) => input === "U" || input === "D";
     if (!isRight(input)) throw new Error(ERROR_MESSAGE.moving);
   } catch (err) {
     Console.print(err.message);
