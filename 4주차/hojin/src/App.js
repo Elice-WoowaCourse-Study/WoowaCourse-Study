@@ -1,65 +1,81 @@
-const BridgeRandomNumberGenerator = require("./BridgeRandomNumberGenerator.js");
-const BridgeMaker = require("./BridgeMaker.js");
-const InputView = require("./View/InputView.js");
-const OutputView = require("./View/OutputView.js");
-const BridgeGame = require("./BridgeGame.js");
+const { readBridgeSize, readMoving, readGameCommand } = require("./InputView");
+const OutputView = require("./OutputView");
+
+const {
+  bridgeLength,
+  bridgeDirection,
+  gameContinue,
+} = require("./utils/validate");
+const { DEFAULT } = require("./utils/constant");
+const { getBridgeMake } = require("./utils/utilityFuncions");
+
+const BridgeGame = require("./BridgeGame");
 
 class App {
-  constructor() {
-    this.bridgeGame = new BridgeGame();
+  play() {
+    const bridgeGame = new BridgeGame();
+    OutputView.printInitialComment();
+    readBridgeSize((size) => this.bridgeSizeCallback(bridgeGame, size));
   }
 
-  play = () => {
-    OutputView.printInitialComment();
-    InputView.readBridgeSize(this.bridgeSizeCallback);
-  };
-
-  bridgeSizeCallback = (input) => {
-    // 값 검증
-    const length = Number(input);
-    const bridge = BridgeMaker.makeBridge(
-      length,
-      BridgeRandomNumberGenerator.generate,
+  bridgeSizeCallback(bridgeGame, bridgeSize) {
+    const length = Number(bridgeSize);
+    const isBridgeValidate = bridgeLength(length, () =>
+      readBridgeSize((size) => this.bridgeSizeCallback(bridgeGame, size)),
     );
+    if (!isBridgeValidate) return;
 
-    this.bridgeGame.setState({ length, bridge });
-    InputView.readMoving(this.moveCallback);
-  };
+    const bridge = getBridgeMake(length);
+    bridgeGame.setState({ length, bridge });
+    readMoving((direction) => this.moveCallback(bridgeGame, direction));
+  }
 
-  moveCallback = (input) => {
-    this.bridgeGame.move(input);
-    // 여기서 한번 갈라질 것
-    const nextMove = this.bridgeGame.getNextMove(input);
-    this.doNextMove(nextMove);
-  };
+  moveCallback(bridgeGame, direction) {
+    const isDirectionValidate = bridgeDirection(direction, () =>
+      readMoving((direction) => this.moveCallback(bridgeGame, direction)),
+    );
+    if (!isDirectionValidate) return;
+    const { inputHistory, bridge } = bridgeGame.move(direction);
+    OutputView.printUserInput(inputHistory, bridge);
 
-  retryCallback = (input) => {
-    // input 값 보고 결정할 것.
-    // 값 검증
-    // 재시작 관련로직 정리하기
-    const result = this.bridgeGame.retry(input);
-    if (!result) {
-      this.bridgeGame.end();
-      return;
-    }
-    InputView.readMoving(this.moveCallback);
-  };
+    const nextMove = bridgeGame.getNextMove(direction);
+    this.doNextMove(bridgeGame, nextMove);
+  }
 
-  doNextMove = (nextMove) => {
+  retryCallback(bridgeGame, command) {
+    const isGameContinueValidate = gameContinue(command, () =>
+      readGameCommand((command) => this.retryCallback(bridgeGame, command)),
+    );
+    if (!isGameContinueValidate) return;
+
+    const result = bridgeGame.retry(command);
+    return result
+      ? readMoving((direction) => this.moveCallback(bridgeGame, direction))
+      : this.endCallback(bridgeGame.end());
+  }
+
+  endCallback({ inputHistory, bridge, isSuccess, tryCount }) {
+    OutputView.printGameEnd();
+    OutputView.printUserInput(inputHistory, bridge);
+    OutputView.printResult({ isSuccess, tryCount });
+  }
+
+  doNextMove(bridgeGame, nextMove) {
     switch (nextMove) {
-      case "Retry":
-        return InputView.readGameCommand(this.retryCallback);
-      case "End":
-        return this.bridgeGame.end();
-      case "Move":
-        return InputView.readMoving(this.moveCallback);
-      default:
-        return;
+      case DEFAULT.RETRY:
+        return readGameCommand((command) =>
+          this.retryCallback(bridgeGame, command),
+        );
+      case DEFAULT.END:
+        return this.endCallback(bridgeGame.end());
+      case DEFAULT.MOVE:
+        return readMoving((direction) =>
+          this.moveCallback(bridgeGame, direction),
+        );
     }
-  };
+  }
 }
 
-const app = new App();
-app.play();
+new App().play();
 
 module.exports = App;
