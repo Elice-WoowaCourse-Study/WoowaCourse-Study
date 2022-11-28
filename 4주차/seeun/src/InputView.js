@@ -19,7 +19,7 @@ const InputView = {
   /**
    * 다리의 길이를 입력받는다.
    */
-
+  
   readBridgeSize() {
     Console.readLine(INPUT_MESSAGE.bridge, (input) => {
       if (bridgeLengthValidate(input)) return this.readBridgeSize();
@@ -27,7 +27,7 @@ const InputView = {
         input,
         BridgeRandomNumberGenerator.generate
       );
-      const bridgeGame = new BridgeGame(bridge, [[], []], MOVING.count);
+      const bridgeGame = new BridgeGame(bridge, [[],[]], MOVING.count);
       this.readMoving(bridgeGame, bridge);
     });
   },
